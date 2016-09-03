@@ -19,7 +19,7 @@
     "babel-preset-es2016": "^6.11.3",
     "babel-preset-react": "^6.11.1",
     "babel-register": "^6.9.0",
-    "chroma-js": "^1.1.1",
+    "chroma-js": "^1.2.1",
     "classnames": "^2.2.1",
     "compression": "^1.6.1",
     "connect-history-api-fallback": "^1.1.0",

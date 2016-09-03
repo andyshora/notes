@@ -1,9 +1,13 @@
 import React from 'react';
 import log from 'loglevel';
 import paper from 'paper';
+import chroma from 'chroma-js';
 
 // Styles
 import './canvas.scss';
+
+const POINT_RADIUS = 5;
+const NOTES = ['A','B','C','D','E','F','G'];
 
 class Canvas extends React.Component {
   constructor(props) {
@@ -13,6 +17,8 @@ class Canvas extends React.Component {
       notes: {}
     };
 
+    this._colorScale = chroma.scale(['rgb(230, 95, 147)', 'rgb(219, 247, 11)']);
+
     this._notes = [];
 
   }
@@ -21,6 +27,15 @@ class Canvas extends React.Component {
     paper.install(window);
     this._updateContainerDims();
 
+  }
+
+  _getNoteFromIndex(i) {
+    const rem = i % NOTES.length;
+    const offset = Math.floor(i / NOTES.length);
+
+    const key = NOTES[rem];
+
+    return { octave: 2 + offset, key };
   }
 
   _setupCanvas() {
@@ -37,8 +52,20 @@ class Canvas extends React.Component {
 
     this._drawGuides();
 
-    this._addNote('C', 20, 2000);
-    this._addNote('A', 30, 4000);
+    // this._addNote('C', 20, 2000);
+    // this._addNote('A', 30, 4000);
+
+    /*for (let i = 0; i < 20; i++) {
+      this._addNote(`0_${i}`, i, 1 + (i * 0.4), 4000 + (i * 10));
+    }*/
+
+    for (let i = 0; i < 20; i++) {
+      this._addNote(`1_${i}`, i, 1 + (i * 2), 4000 + (i * 10));
+    }
+
+    // create piano
+    Synth.setVolume(0.40);
+    this._piano = Synth.createInstrument('piano');
 
   }
 
@@ -60,19 +87,22 @@ class Canvas extends React.Component {
 
   }
 
-  _addNote(id, r, speed) {
-
-    const fromPos = this._getPos(1, 1);
-    const endPos = this._getPos(99, 99);
+  _addNote(id, i, r, speed) {
 
     this._groups.notes[id] = new Group();
-    this._groups.notes[id].bounds = new Rectangle(fromPos, endPos);
 
     const pos = this._getPos(50 - r, 50);
-    let point = new Shape.Circle(new Point(pos), 3);
-    point.fillColor = 'white';
+    let point = new Shape.Circle(new Point(pos), POINT_RADIUS);
+    const note = this._getNoteFromIndex(i);
 
-    this._notes.push({ id, speed });
+    const scaleFactor = (20 * r / this.state.width);
+    const color = this._colorScale(scaleFactor);
+
+    point.fillColor = color.hex();
+
+    // point.fillOpacity = 0;
+
+    this._notes.push({ id, speed, note });
 
     this._groups.notes[id].addChild(point);
   }
@@ -87,24 +117,32 @@ class Canvas extends React.Component {
 
   _updateContainerDims() {
     const width = window.innerWidth;
-    const height = window.innerHeight - 50;
+    const height = window.innerHeight;
     const origin = { x: width / 2, y: height / 2 };
-
-    log.debug(width, height, origin);
 
     this.setState({ width, height, origin });
   }
 
   _onResize() {
-    log.debug('_onResize');
     this._updateContainerDims();
   }
 
   _onFrame(params) {
     const { delta, time, count } = params;
 
-    this._notes.forEach(n => {
-      this._groups.notes[n.id].rotate((360 / n.speed) * delta * 1000, this.state.origin);
+    this._notes.forEach(note => {
+
+      const node = this._groups.notes[note.id];
+      const { x, y } = node.position;
+
+      if (x > this.state.origin.x && Math.abs(y - this.state.origin.y) < 1) {
+        this._piano.play(note.note.key, note.note.octave, 1);
+      }
+      node.rotate((360 / note.speed) * delta * 1000, this.state.origin);
+
+
+
+      // this._piano.play('C', 2, 1);
     }, this);
   }
 
